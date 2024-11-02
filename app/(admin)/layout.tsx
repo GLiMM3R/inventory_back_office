@@ -38,7 +38,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             </Breadcrumb>
           </div>
         </header>
-        <main className="p-4 flex-1">{children}</main>
+        <main className="p-4 flex-1 bg-green-400">{children}</main>
       </SidebarInset>
     </SidebarProvider>
   );
