@@ -13,6 +13,7 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
+import { Toaster } from "@/components/ui/toaster";
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   return (
@@ -38,7 +39,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             </Breadcrumb>
           </div>
         </header>
-        <main className="p-4 flex-1 bg-green-400">{children}</main>
+        <main className="p-4 flex-1">{children}</main>
+        <Toaster />
       </SidebarInset>
     </SidebarProvider>
   );

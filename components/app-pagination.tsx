@@ -6,7 +6,6 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
-
 type Props = {
   total: number;
   page: number;
@@ -30,29 +29,34 @@ export function AppPagination({ page, limit, total, onPageChange }: Props) {
   };
 
   return (
-    <Pagination>
-      <PaginationContent>
-        <PaginationItem>
-          <PaginationPrevious
-            className="cursor-pointer"
-            onClick={handlePreviousPage}
-          />
-        </PaginationItem>
-        {Array.from({ length: totalPages }).map((_, index) => (
-          <PaginationItem key={index}>
-            <PaginationLink
+    <div>
+      <Pagination>
+        <PaginationContent>
+          <PaginationItem>
+            <PaginationPrevious
               className="cursor-pointer"
-              onClick={() => onPageChange(index + 1)}
-              isActive={page == index + 1}
-            >
-              {index + 1}
-            </PaginationLink>
+              onClick={handlePreviousPage}
+            />
           </PaginationItem>
-        ))}
-        <PaginationItem>
-          <PaginationNext className="cursor-pointer" onClick={handleNextPage} />
-        </PaginationItem>
-      </PaginationContent>
-    </Pagination>
+          {Array.from({ length: totalPages }).map((_, index) => (
+            <PaginationItem key={index}>
+              <PaginationLink
+                className="cursor-pointer"
+                onClick={() => onPageChange(index + 1)}
+                isActive={page == index + 1}
+              >
+                {index + 1}
+              </PaginationLink>
+            </PaginationItem>
+          ))}
+          <PaginationItem>
+            <PaginationNext
+              className="cursor-pointer"
+              onClick={handleNextPage}
+            />
+          </PaginationItem>
+        </PaginationContent>
+      </Pagination>
+    </div>
   );
 }
