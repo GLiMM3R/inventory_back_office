@@ -29,16 +29,25 @@ import { X } from "lucide-react";
 import { useCreateProduct } from "@/features/products/services/use-create-product.service";
 import { AttributeForm } from "./_components/AttributeForm";
 import { UploadImage } from "@/components/upload-image";
+import { useState } from "react";
+import { useUploadFiles } from "@/features/files/services/use-upload-file.service";
+import CategorySelect from "@/components/category-select";
 
-export default function ProfileForm() {
+interface FileWithPreview extends File {
+  preview: string;
+}
+
+export default function ProductFormPage() {
   const mutation = useCreateProduct();
+  const mutaionUpload = useUploadFiles();
+  const [files, setFiles] = useState<FileWithPreview[]>([]);
 
   const form = useForm<ProductForm>({
     resolver: zodResolver(productSchema),
     defaultValues: {
       name: "",
-      category_id: "",
-      images: [""],
+      category_id: "1",
+      images: [],
       variants: [
         {
           price: 0,
@@ -70,14 +79,21 @@ export default function ProfileForm() {
     });
   };
 
-  function onSubmit(values: ProductForm) {
-    console.log(values);
+  function handleAddImages(files: FileWithPreview[]) {
+    setFiles((prevFiles) => [...files]);
+    form.setValue("images", [...files.map((file) => file.name)]);
+  }
+
+  async function onSubmit(values: ProductForm) {
+    let images: string[] = [];
+
+    if (files.length) {
+      images = await mutaionUpload.mutateAsync(files);
+    }
+
     mutation.mutate({
       ...values,
-      category_id: "1",
-      images: [
-        "https://images.pexels.com/photos/991509/pexels-photo-991509.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
-      ],
+      images,
     });
   }
 
@@ -90,22 +106,6 @@ export default function ProfileForm() {
               <CardTitle>Product Details</CardTitle>
             </CardHeader>
             <CardContent className="grid grid-cols-2 gap-x-8">
-              <div className="col-span-2">
-                <FormField
-                  control={form.control}
-                  name="name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Name</FormLabel>
-                      <FormControl>
-                        <UploadImage />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
               <FormField
                 control={form.control}
                 name="name"
@@ -129,21 +129,30 @@ export default function ProfileForm() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Category</FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      defaultValue={field.value}
-                    >
-                      <FormControl>
-                        <SelectTrigger className="w-full">
-                          <SelectValue />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="shirt">Shirt</SelectItem>
-                        <SelectItem value="pant">Pant</SelectItem>
-                        <SelectItem value="jacket">Jacket</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <CategorySelect
+                      onChange={field.onChange}
+                      value={field.value}
+                    />
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>Product Images</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <FormField
+                control={form.control}
+                name="images"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Images</FormLabel>
+                    <FormControl>
+                      <UploadImage values={files} onSetValues={setFiles} />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}

@@ -1,3 +1,5 @@
+"use client";
+
 import {
   SidebarInset,
   SidebarProvider,
@@ -14,6 +16,7 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import { Toaster } from "@/components/ui/toaster";
+import { usePathname } from "next/navigation";
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   return (

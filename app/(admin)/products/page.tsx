@@ -75,7 +75,12 @@ export default function Products() {
             <TableBody>
               {data?.data &&
                 data.data.map((product) => (
-                  <TableRow key={product.product_id}>
+                  <TableRow
+                    key={product.product_id}
+                    onClick={() =>
+                      router.push(`/products/${product.product_id}`)
+                    }
+                  >
                     <TableCell>{product.name}</TableCell>
                     <TableCell>{product.category}</TableCell>
                     <TableCell>

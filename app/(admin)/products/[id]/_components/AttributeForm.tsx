@@ -13,7 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ProductForm } from "@/features/products/dto/create-product.dto";
+import { VariantUpdateDto } from "@/features/products/dto/update-variant.dto";
 import { Select } from "@radix-ui/react-select";
 import { X } from "lucide-react";
 import { Control, useFieldArray } from "react-hook-form";
@@ -22,11 +22,10 @@ export const AttributeForm = ({
   control,
   index,
 }: {
-  control: Control<ProductForm>;
+  control: Control<VariantUpdateDto>;
   index: number;
 }) => {
-  // const [attributes, setAttributes] = useState<string[]>(["size", "color"]);
-  const attributes = ["size", "color"];
+  const attributes = ["size", "color", "storage"];
   const { fields, append, remove } = useFieldArray({
     control,
     name: `variants.${index}.attributes`,

@@ -5,6 +5,7 @@ export const productSchema = z.object({
     message: "name must be at least 2 characters.",
   }),
   category_id: z.string(),
+  description: z.string().optional(),
   images: z.array(z.string().optional()).optional(),
   variants: z.array(
     z.object({

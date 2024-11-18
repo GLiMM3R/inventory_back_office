@@ -1,6 +1,6 @@
 import { base_url } from "@/constants/base_url";
 import http from "@/lib/request";
-import { IProducts } from "../model/product.interface";
+import { IProducts } from "../model/products.interface";
 import { Response } from "@/types/reponse";
 import { useQuery } from "@tanstack/react-query";
 

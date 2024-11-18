@@ -8,7 +8,7 @@ const createProduct = async (data: ProductForm) => {
   try {
     const res = await http.post(`${base_url}/products`, data);
 
-    if (res.status == 201) {
+    if (res.status !== 201) {
       throw new Error("Failed to create product");
     }
   } catch (error) {

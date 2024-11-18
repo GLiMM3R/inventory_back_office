@@ -57,26 +57,17 @@ const data = {
       icon: LineChart,
     },
     {
-      title: "Products",
-      url: "/products",
-      icon: Package,
-    },
-    {
-      title: "Models",
+      title: "Product Management",
       url: "#",
-      icon: Bot,
+      icon: Package,
       items: [
         {
-          title: "Genesis",
-          url: "#",
+          title: "Products",
+          url: "/products",
         },
         {
-          title: "Explorer",
-          url: "#",
-        },
-        {
-          title: "Quantum",
-          url: "#",
+          title: "Categories",
+          url: "/categories",
         },
       ],
     },
@@ -154,7 +145,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarHeader>
       <SidebarContent>
         <NavMain items={data.navMain} />
-        {/* <NavProjects projects={data.projects} /> */}
       </SidebarContent>
       <SidebarFooter>
         <NavUser user={data.user} />
