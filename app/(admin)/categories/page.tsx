@@ -62,7 +62,6 @@ export default function Categories() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>ID</TableHead>
               <TableHead>Name</TableHead>
               <TableHead>Created At</TableHead>
             </TableRow>
@@ -71,7 +70,6 @@ export default function Categories() {
             {data?.data &&
               data.data.map((category) => (
                 <TableRow key={category.category_id}>
-                  <TableCell>{category.category_id}</TableCell>
                   <TableCell>{category.name}</TableCell>
                   <TableCell>
                     {new Date(category.created_at * 1000).toLocaleString(
