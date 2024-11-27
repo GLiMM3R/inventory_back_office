@@ -11,15 +11,15 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { UploadImage } from "@/components/upload-image";
-import { base_url } from "@/constants/base_url";
-import { useUploadFiles } from "@/features/files/services/use-upload-file.service";
-import {
-  ProductUpdateDto,
-  productUpdateSchema,
-} from "@/features/products/dto/update-product.dto";
+import { UploadImages } from "@/components/upload-images";
+import { IFileRequest } from "@/features/files/dto/file-request";
+import { useCreatePresign } from "@/features/files/services/use-create-presign.service";
+import { useUploadS3 } from "@/features/files/services/use-upload-s3.service";
+import { productSchema } from "@/features/products/dto/create-product.dto";
+import { UpdateProductSchema } from "@/features/products/dto/update-product.dto";
 import { IProduct } from "@/features/products/model/product.interface";
 import { useUpdateProduct } from "@/features/products/services/use-update-product.service";
+import { getChangedValues } from "@/lib/get-change-values";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Save } from "lucide-react";
 import React, { useEffect, useState } from "react";
@@ -27,6 +27,7 @@ import { useForm } from "react-hook-form";
 
 interface FileWithPreview extends File {
   preview: string;
+  id?: string;
 }
 
 type Props = {
@@ -35,7 +36,8 @@ type Props = {
 
 export default function ProductDetailForm({ product }: Props) {
   const mutation = useUpdateProduct();
-  const mutaionUpload = useUploadFiles();
+  const mutationPresign = useCreatePresign();
+  const mutationS3 = useUploadS3();
   const [files, setFiles] = useState<FileWithPreview[]>([]);
 
   useEffect(() => {
@@ -43,38 +45,62 @@ export default function ProductDetailForm({ product }: Props) {
       setFiles(
         product.images.map((image) => {
           return {
-            name: image,
-            preview: base_url + "/files/products/" + image,
+            id: image.media_id,
+            name: image.file_name,
+            preview: image.file_url,
+            size: image.file_size,
+            type: image.file_type,
           } as FileWithPreview;
         })
       );
     }
   }, [product]);
 
-  const form = useForm<ProductUpdateDto>({
-    resolver: zodResolver(productUpdateSchema),
-    values: {
-      name: product?.name ?? "",
-      category_id: product?.category_id ?? "",
-      description: product?.description ?? "",
-      images: product?.images ?? [],
+  const form = useForm<UpdateProductSchema>({
+    resolver: zodResolver(productSchema),
+    defaultValues: product ?? {
+      name: "",
+      category_id: "",
+      description: "",
+      variants: [],
     },
   });
 
-  async function onSubmit(values: ProductUpdateDto) {
-    // let images: string[] = [];
+  useEffect(() => {
+    form.reset(product);
+  }, [product]);
 
-    // if (files.length) {
-    //   images = await mutaionUpload.mutateAsync(files);
-    // }
+  async function onSubmit(values: UpdateProductSchema) {
+    let files_request: IFileRequest[] = [];
 
+    if (files.length) {
+      for (const file of files) {
+        if (!file.id) {
+          // const presignResponse = await mutationPresign.mutateAsync(file.name);
+          // await mutationS3.mutateAsync({
+          //   file,
+          //   presignUrl: presignResponse.url,
+          // });
+          files_request.unshift({
+            file_name: file.name,
+            file_size: file.size,
+            file_type: file.type,
+            media_type: "product",
+            description: "",
+          });
+        }
+      }
+    }
+
+    console.log(files_request);
+
+    return;
     if (product?.product_id) {
       mutation.mutate({
         id: product?.product_id,
         product: {
           category_id: values?.category_id,
           description: values.description,
-          //   images: images,
           name: values.name,
         },
       });
@@ -156,18 +182,7 @@ export default function ProductDetailForm({ product }: Props) {
               <CardTitle>Images</CardTitle>
             </CardHeader>
             <CardContent>
-              <FormField
-                control={form.control}
-                name="images"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormControl>
-                      <UploadImage values={files} onSetValues={setFiles} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <UploadImages values={files} onSetValues={setFiles} />
             </CardContent>
           </Card>
         </form>

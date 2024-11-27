@@ -2,11 +2,11 @@ import http from "@/lib/request";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "@/hooks/use-toast";
 import { base_url } from "@/constants/base_url";
-import { ProductUpdateDto } from "../dto/update-product.dto";
+import { UpdateProductSchema } from "../dto/update-product.dto";
 
 type Props = {
   id: string;
-  product: Partial<ProductUpdateDto>;
+  product: UpdateProductSchema;
 };
 
 const updateProduct = async ({ id, product }: Props) => {

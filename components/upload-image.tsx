@@ -1,86 +1,104 @@
-import { Upload } from "lucide-react";
-import Image from "next/image";
-import React, { Dispatch, SetStateAction, useEffect, useState } from "react";
-import { useDropzone, DropzoneOptions } from "react-dropzone";
-
-interface FileWithPreview extends File {
-  preview: string;
-}
+import React, {
+  useState,
+  useRef,
+  ChangeEvent,
+  Dispatch,
+  SetStateAction,
+} from "react";
+import { Upload, ImagePlus, Trash2 } from "lucide-react";
+import { IFileWithPreview } from "@/types/file-with-preview.type";
 
 interface UploadImageProps {
-  values: FileWithPreview[];
-  onSetValues: Dispatch<SetStateAction<FileWithPreview[]>>;
-  // onSetValue: (files: FileWithPreview[]) => void;
+  value?: IFileWithPreview | null;
+  onSetValue: Dispatch<SetStateAction<IFileWithPreview | null>>;
 }
 
-export function UploadImage({ values, onSetValues }: UploadImageProps) {
-  // const [files, setFiles] = useState<FileWithPreview[]>([]);
+const UploadImage = ({ value, onSetValue }: UploadImageProps) => {
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const dropzoneOptions: DropzoneOptions = {
-    accept: {
-      "image/*": [],
-    },
-    onDrop: (acceptedFiles: File[]) => {
-      const newFiles = acceptedFiles.map((file) =>
-        Object.assign(file, {
+  const handleImageChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      // Check file type and size
+      const allowedTypes = ["image/jpeg", "image/png", "image/gif"];
+      const maxSize = 5 * 1024 * 1024; // 5MB
+
+      if (!allowedTypes.includes(file.type)) {
+        alert("Please upload a valid image (JPEG, PNG, or GIF)");
+        return;
+      }
+
+      if (file.size > maxSize) {
+        alert("File is too large. Maximum size is 5MB");
+        return;
+      }
+
+      // Create a file reader to show preview
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onloadend = () => {
+        onSetValue({
+          ...file,
           preview: URL.createObjectURL(file),
-        })
-      ) as FileWithPreview[];
-      onSetValues((prevFiles) => [...prevFiles, ...newFiles]);
-      // props.onSetValue([...files, ...newFiles]);
-    },
+        } as IFileWithPreview);
+      };
+    }
   };
 
-  const { getRootProps, getInputProps } = useDropzone(dropzoneOptions);
-
-  const removeImage = (file: FileWithPreview) => {
-    onSetValues((prevFiles) => prevFiles.filter((f) => f !== file));
-    URL.revokeObjectURL(file.preview); // Revoke the URL to avoid memory leaks
+  const handleRemoveImage = () => {
+    onSetValue(null);
+    // Reset file input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
   };
-
-  const thumbs = values.map((file) => (
-    <div
-      key={file.name}
-      className="inline-flex border rounded border-gray-200 m-2 w-36 h-36 p-1 box-border relative justify-center"
-    >
-      <div className="flex min-w-0 overflow-hidden">
-        <Image
-          src={file.preview}
-          className="block object-contain w-auto h-full"
-          width={50}
-          height={50}
-          alt=""
-          onLoad={() => {
-            URL.revokeObjectURL(file.preview);
-          }}
-        />
-      </div>
-      <button
-        onClick={() => removeImage(file)}
-        className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center"
-      >
-        &times;
-      </button>
-    </div>
-  ));
-
-  useEffect(() => {
-    // Make sure to revoke the data uris to avoid memory leaks, will run on unmount
-    return () => values.forEach((file) => URL.revokeObjectURL(file.preview));
-  }, [values]);
 
   return (
-    <section className="container mx-auto p-4">
+    <div className="max-w-md w-full h-full mx-auto p-4 bg-white rounded-lg shadow-md">
       <div
-        {...getRootProps()}
-        className="p-8 border-2 border-dashed border-gray-300 bg-neutral-200 text-center rounded-2xl"
+        className="border-2 w-full h-full border-dashed border-gray-300 rounded-lg p-4 text-center 
+        hover:border-primary transition-colors duration-300"
+        onClick={() => fileInputRef.current?.click()}
       >
-        <input {...getInputProps()} />
-        <p className="text-gray-600">
-          Drag and drop some files here, or click to select files
-        </p>
+        <input
+          type="file"
+          ref={fileInputRef}
+          onChange={handleImageChange}
+          accept="image/jpeg,image/png,image/gif"
+          className="hidden"
+        />
+
+        {value ? (
+          <div className="relative w-full h-full">
+            <img
+              src={value.preview}
+              alt="Preview"
+              className="w-full h-full mx-auto rounded-lg object-cover"
+            />
+            <div className="absolute top-2 right-2 flex space-x-2">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleRemoveImage();
+                }}
+                className="bg-red-500 text-white p-2 rounded-full hover:bg-red-600"
+              >
+                <Trash2 size={20} />
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex flex-col items-center justify-center">
+            <Upload className="text-gray-400 w-12 h-12 mb-4" />
+            <p className="text-gray-600">Click to upload image</p>
+            <p className="text-xs text-gray-500 mt-2">
+              Supports: JPEG, PNG, GIF (Max 5MB)
+            </p>
+          </div>
+        )}
       </div>
-      <aside className="mt-4 flex flex-wrap">{thumbs}</aside>
-    </section>
+    </div>
   );
-}
+};
+
+export default UploadImage;

@@ -10,6 +10,12 @@ const nextConfig: NextConfig = {
         port: "3001",
         pathname: "/files/**",
       },
+      {
+        protocol: "http",
+        hostname: "localhost",
+        port: "9000",
+        pathname: "/dev-inventory/**",
+      },
     ],
   },
 };

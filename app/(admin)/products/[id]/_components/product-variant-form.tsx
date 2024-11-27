@@ -10,125 +10,188 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Save, X } from "lucide-react";
-import React from "react";
-import { AttributeForm } from "./AttributeForm";
-import { useFieldArray, useForm } from "react-hook-form";
+import React, { useEffect, useState } from "react";
+import { AttributeForm } from "./attribute-form";
+import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import {
-  ProductUpdateDto,
-  productUpdateSchema,
-} from "@/features/products/dto/update-product.dto";
-import { IProduct } from "@/features/products/model/product.interface";
-import { useUpdateProduct } from "@/features/products/services/use-update-product.service";
+import { getChangedValues } from "@/lib/get-change-values";
+import { IVariant } from "@/features/variants/model/variant.interface";
+import { variantSchema } from "@/features/variants/dto/create-variant.dto";
+import { UpdateVariantSchema } from "@/features/variants/dto/update-variant.dto";
+import { useUpdateVaraint } from "@/features/variants/services/use-update-product.service";
+import { IFileWithPreview } from "@/types/file-with-preview.type";
+import UploadImage from "@/components/upload-image";
+import { IFileRequest } from "@/features/files/dto/file-request";
+import { useCreatePresign } from "@/features/files/services/use-create-presign.service";
+import { useUploadS3 } from "@/features/files/services/use-upload-s3.service";
 
 type Props = {
-  product?: IProduct;
+  variant?: IVariant;
 };
 
-export default function ProductVariantForm({ product }: Props) {
-  const mutation = useUpdateProduct();
-  const form = useForm<ProductUpdateDto>({
-    resolver: zodResolver(productUpdateSchema),
-    values: {
-      variants: [
-        {
-          price: 0,
-          attributes: [
-            {
-              attribute: "",
-              value: "",
-            },
-          ],
-        },
-      ],
-    },
-  });
+export default function ProductVariantForm({ variant }: Props) {
+  const [file, setFile] = useState<IFileWithPreview | null>(null);
+  const mutation = useUpdateVaraint();
+  const mutationPresign = useCreatePresign();
+  const mutationS3 = useUploadS3();
 
-  const variantField = useFieldArray({
-    control: form.control,
-    name: "variants",
-  });
-
-  const addVariant = () => {
-    variantField.append({
+  const form = useForm<UpdateVariantSchema>({
+    resolver: zodResolver(variantSchema),
+    defaultValues: variant ?? {
+      sku: "",
       price: 0,
+      quantity: 0,
+      restock_level: 0,
+      is_active: true,
+      status: "inactive",
       attributes: [
         {
           attribute: "",
           value: "",
         },
       ],
-    });
-  };
+    },
+  });
 
-  async function onSubmit(values: ProductUpdateDto) {
-    // let images: string[] = [];
+  // Reset the form when the product prop changes
+  useEffect(() => {
+    form.reset(variant);
+  }, [variant]);
 
-    // if (files.length) {
-    //   images = await mutaionUpload.mutateAsync(files);
-    // }
+  // useEffect(() => {
+  //   if (variant && variant?.image) {
+  //     setFile({
+  //       id: variant?.image.media_id,
+  //       name: variant?.image.file_name,
+  //       preview: variant?.image.file_url,
+  //       size: variant?.image.file_size,
+  //       type: variant?.image.file_type,
+  //     } as IFileWithPreview);
+  //   }
+  // }, [variant?.image]);
 
-    if (product?.product_id) {
+  async function onSubmit(values: UpdateVariantSchema) {
+    console.log(file?.size);
+    return;
+
+    if (variant) {
+      let image_request: IFileRequest | undefined;
+
+      if (file) {
+        const presignResponse = await mutationPresign.mutateAsync(file.name);
+        await mutationS3.mutateAsync({ file, presignUrl: presignResponse.url });
+        image_request = {
+          file_name: presignResponse.file_name,
+          file_size: file.size,
+          file_type: file.type,
+          media_type: "product",
+          description: "",
+        };
+      }
+
+      const changed = getChangedValues(variant, values);
+
       mutation.mutate({
-        id: product?.product_id,
-        product: {
-          variants: values.variants,
-        },
+        product_id: variant.product_id,
+        variant_id: variant.variant_id,
+        data: { ...changed, image: image_request },
       });
+    } else {
+      console.log(values);
     }
   }
 
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-        <div className="flex justify-end">
-          <Button type="submit">
-            <span>
-              <Save />
-            </span>
-            Save
-          </Button>
-        </div>
-        {variantField.fields.map((field, index) => (
-          <Card key={field.id}>
-            <CardHeader>
-              <CardTitle className="flex justify-between">
-                <span>Variants</span>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => variantField.remove(index)}
-                >
-                  <X />
-                </Button>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              <FormField
-                control={form.control}
-                name={`variants.${index}.price`}
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Price</FormLabel>
-                    <FormControl>
-                      <Input
-                        {...field}
-                        type="number"
-                        className="h-9"
-                        onChange={(e) => field.onChange(Number(e.target.value))}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <AttributeForm control={form.control} index={index} key={index} />
-            </CardContent>
-          </Card>
-        ))}
-        <div className="flex justify-between">
-          <Button onClick={addVariant}>Add Variant</Button>
-        </div>
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex justify-between">
+              <span>Variants</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="grid grid-cols-2 gap-x-4 gap-y-4">
+            <div className="col-span-2 size-52">
+              <UploadImage value={file} onSetValue={setFile} />
+            </div>
+            <FormField
+              control={form.control}
+              name={"sku"}
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>SKU</FormLabel>
+                  <FormControl>
+                    <Input {...field} className="h-9" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name={"price"}
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Price</FormLabel>
+                  <FormControl>
+                    <Input
+                      {...field}
+                      type="number"
+                      className="h-9"
+                      onChange={(e) => field.onChange(Number(e.target.value))}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name={"quantity"}
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Quantity</FormLabel>
+                  <FormControl>
+                    <Input
+                      {...field}
+                      type="number"
+                      className="h-9"
+                      onChange={(e) => field.onChange(Number(e.target.value))}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name={"restock_level"}
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Restock Level</FormLabel>
+                  <FormControl>
+                    <Input
+                      {...field}
+                      type="number"
+                      className="h-9"
+                      onChange={(e) => field.onChange(Number(e.target.value))}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <div className="col-span-2 mt-4">
+              <AttributeForm control={form.control} />
+            </div>
+            <div className="col-span-2 flex justify-end mt-4">
+              <Button type="submit">
+                <Save />
+                <span>Save</span>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       </form>
     </Form>
   );

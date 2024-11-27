@@ -1,3 +1,5 @@
+import { IFileRequest } from "@/features/files/dto/file-request";
+import { variantSchema } from "@/features/variants/dto/create-variant.dto";
 import { z } from "zod";
 
 export const productSchema = z.object({
@@ -6,20 +8,11 @@ export const productSchema = z.object({
   }),
   category_id: z.string(),
   description: z.string().optional(),
-  images: z.array(z.string().optional()).optional(),
-  variants: z.array(
-    z.object({
-      price: z.number().min(0, {
-        message: "price must be a non-negative number.",
-      }),
-      attributes: z.array(
-        z.object({
-          attribute: z.string().min(1),
-          value: z.string().min(1),
-        })
-      ),
-    })
-  ),
+  variants: z.array(variantSchema).optional(),
 });
 
-export type ProductForm = z.infer<typeof productSchema>;
+export type CreateProductSchema = z.infer<typeof productSchema>;
+
+export type CreateProductDto = CreateProductSchema & {
+  images: IFileRequest[];
+};

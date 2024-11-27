@@ -1,10 +1,10 @@
 import http from "@/lib/request";
-import { ProductForm } from "../dto/create-product.dto";
+import { CreateProductDto } from "../dto/create-product.dto";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "@/hooks/use-toast";
 import { base_url } from "@/constants/base_url";
 
-const createProduct = async (data: ProductForm) => {
+const createProduct = async (data: CreateProductDto) => {
   try {
     const res = await http.post(`${base_url}/products`, data);
 
@@ -20,7 +20,7 @@ export const useCreateProduct = () => {
   const queryClient = useQueryClient();
 
   const mutation = useMutation({
-    mutationFn: async (newProduct: ProductForm) => {
+    mutationFn: async (newProduct: CreateProductDto) => {
       await createProduct(newProduct);
     },
     onSuccess: () => {

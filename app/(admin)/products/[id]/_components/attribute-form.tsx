@@ -13,22 +13,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { VariantUpdateDto } from "@/features/products/dto/update-variant.dto";
+import { UpdateVariantSchema } from "@/features/variants/dto/update-variant.dto";
 import { Select } from "@radix-ui/react-select";
-import { X } from "lucide-react";
+import { Plus, X } from "lucide-react";
 import { Control, useFieldArray } from "react-hook-form";
 
 export const AttributeForm = ({
   control,
-  index,
 }: {
-  control: Control<VariantUpdateDto>;
-  index: number;
+  control: Control<UpdateVariantSchema>;
 }) => {
   const attributes = ["size", "color", "storage"];
   const { fields, append, remove } = useFieldArray({
     control,
-    name: `variants.${index}.attributes`,
+    name: `attributes`,
   });
 
   const addAttribute = () => {
@@ -36,7 +34,13 @@ export const AttributeForm = ({
   };
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-2">
+      <div className="flex justify-start">
+        <Button type="button" className="bg-slate-500" onClick={addAttribute}>
+          <Plus />
+          <span>Add Attribute</span>
+        </Button>
+      </div>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {fields.map((field, attrIndex) => (
           <div
@@ -45,7 +49,7 @@ export const AttributeForm = ({
           >
             <FormField
               control={control}
-              name={`variants.${index}.attributes.${attrIndex}.attribute`}
+              name={`attributes.${attrIndex}.attribute`}
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Attribute</FormLabel>
@@ -72,7 +76,7 @@ export const AttributeForm = ({
             />
             <FormField
               control={control}
-              name={`variants.${index}.attributes.${attrIndex}.value`}
+              name={`attributes.${attrIndex}.value`}
               render={({ field }) => (
                 <FormItem className="w-full">
                   <FormLabel className="flex">Value</FormLabel>
@@ -93,11 +97,6 @@ export const AttributeForm = ({
             </Button>
           </div>
         ))}
-      </div>
-      <div className="flex justify-center">
-        <Button type="button" onClick={addAttribute}>
-          Add Attribute
-        </Button>
       </div>
     </div>
   );
