@@ -1,20 +1,25 @@
-import React, {
-  useState,
-  useRef,
-  ChangeEvent,
-  Dispatch,
-  SetStateAction,
-} from "react";
-import { Upload, ImagePlus, Trash2 } from "lucide-react";
-import { IFileWithPreview } from "@/types/file-with-preview.type";
+import React, { useState, useRef, ChangeEvent, useEffect } from "react";
+import { Upload, Trash2 } from "lucide-react";
+import Image from "next/image";
+import { IImageWithPreview } from "@/types/image-with-preview";
 
 interface UploadImageProps {
-  value?: IFileWithPreview | null;
-  onSetValue: Dispatch<SetStateAction<IFileWithPreview | null>>;
+  // onSetValue: Dispatch<SetStateAction<FileSchema | null>>;
+  value?: IImageWithPreview | null;
+  onStateChange: (value: IImageWithPreview | null) => void;
 }
 
-const UploadImage = ({ value, onSetValue }: UploadImageProps) => {
+const UploadImage = ({ value, onStateChange }: UploadImageProps) => {
+  const [selectedImage, setSelectedImage] = useState<IImageWithPreview | null>(
+    null
+  );
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (value) {
+      setSelectedImage(value);
+    }
+  }, [value]);
 
   const handleImageChange = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -35,18 +40,20 @@ const UploadImage = ({ value, onSetValue }: UploadImageProps) => {
 
       // Create a file reader to show preview
       const reader = new FileReader();
-      reader.readAsDataURL(file);
       reader.onloadend = () => {
-        onSetValue({
-          ...file,
+        const fileWithPreview: IImageWithPreview = {
+          file: file,
           preview: URL.createObjectURL(file),
-        } as IFileWithPreview);
+        };
+        setSelectedImage(() => fileWithPreview);
+        onStateChange(fileWithPreview);
       };
+      reader.readAsDataURL(file);
     }
   };
 
   const handleRemoveImage = () => {
-    onSetValue(null);
+    setSelectedImage(null);
     // Reset file input
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
@@ -68,12 +75,17 @@ const UploadImage = ({ value, onSetValue }: UploadImageProps) => {
           className="hidden"
         />
 
-        {value ? (
+        {selectedImage ? (
           <div className="relative w-full h-full">
-            <img
-              src={value.preview}
-              alt="Preview"
+            <Image
+              src={selectedImage.preview}
               className="w-full h-full mx-auto rounded-lg object-cover"
+              width={200}
+              height={200}
+              alt="Preview"
+              onLoad={() => {
+                URL.revokeObjectURL(selectedImage.preview);
+              }}
             />
             <div className="absolute top-2 right-2 flex space-x-2">
               <button

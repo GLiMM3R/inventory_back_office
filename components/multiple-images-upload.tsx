@@ -1,5 +1,14 @@
-import React, { useState, useRef, ChangeEvent, DragEvent } from "react";
+import React, {
+  useState,
+  useRef,
+  ChangeEvent,
+  DragEvent,
+  Dispatch,
+  SetStateAction,
+} from "react";
 import { Upload, ImagePlus, Trash2 } from "lucide-react";
+import { IFileWithPreview } from "@/types/file-with-preview.type";
+import Image from "next/image";
 
 interface SelectedImage {
   file: File;
@@ -7,8 +16,15 @@ interface SelectedImage {
   id: string;
 }
 
-const MultiImageUpload: React.FC = () => {
-  const [selectedImages, setSelectedImages] = useState<SelectedImage[]>([]);
+interface UploadImagesProps {
+  values: IFileWithPreview[];
+  onSetValues: Dispatch<SetStateAction<IFileWithPreview[]>>;
+}
+
+const MultiImageUpload: React.FC<UploadImagesProps> = ({
+  values,
+  onSetValues,
+}) => {
   const [isDragOver, setIsDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -29,13 +45,13 @@ const MultiImageUpload: React.FC = () => {
 
       const reader = new FileReader();
       reader.onloadend = () => {
-        const newImage: SelectedImage = {
+        const newImage: IFileWithPreview = {
           file,
           preview: reader.result as string,
           id: `${file.name}-${Date.now()}`,
         };
 
-        setSelectedImages((prev) => {
+        onSetValues((prev) => {
           const isDuplicate = prev.some(
             (img) => img.file.name === file.name && img.file.size === file.size
           );
@@ -77,26 +93,28 @@ const MultiImageUpload: React.FC = () => {
     }
   };
 
-  const handleRemoveImage = (id: string) => {
-    setSelectedImages((prev) => prev.filter((img) => img.id !== id));
+  const handleRemoveImage = (id?: string) => {
+    if (id) {
+      onSetValues((prev) => prev.filter((img) => img.id !== id));
+    }
   };
 
   const handleUpload = () => {
-    selectedImages.forEach((image) => {
+    values.forEach((image) => {
       console.log("Uploading file:", image.file);
       // Actual upload logic would go here
     });
   };
 
   return (
-    <div className="max-w-xl mx-auto p-4 bg-white rounded-lg shadow-md">
+    <div className="w-full h-full p-4 bg-white rounded-lg shadow-md">
       <div
         className={`border-2 ${
           isDragOver
-            ? "border-blue-500 bg-blue-50"
+            ? "border-primary bg-blue-50"
             : "border-dashed border-gray-300"
         } 
-        rounded-lg p-6 text-center transition-colors duration-300 hover:border-blue-500`}
+        w-full h-full rounded-lg p-6 text-center transition-colors duration-300 hover:border-primary`}
         onClick={() => fileInputRef.current?.click()}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
@@ -111,7 +129,7 @@ const MultiImageUpload: React.FC = () => {
           className="hidden"
         />
 
-        {selectedImages.length === 0 ? (
+        {values.length === 0 ? (
           <div className="flex flex-col items-center justify-center">
             <Upload className="text-gray-400 w-12 h-12 mb-4" />
             <p className="text-gray-600">
@@ -122,13 +140,18 @@ const MultiImageUpload: React.FC = () => {
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-3 gap-4">
-            {selectedImages.map((image) => (
-              <div key={image.id} className="relative">
-                <img
+          <div className="grid grid-cols-5 gap-4">
+            {values.map((image) => (
+              <div key={image.id} className="relative w-full aspect-square ">
+                <Image
                   src={image.preview}
+                  className="w-full h-full mx-auto rounded-lg object-cover"
+                  width={200}
+                  height={200}
                   alt="Preview"
-                  className="w-full h-32 object-cover rounded-lg"
+                  onLoad={() => {
+                    URL.revokeObjectURL(image.preview);
+                  }}
                 />
                 <button
                   onClick={(e) => {
@@ -141,27 +164,12 @@ const MultiImageUpload: React.FC = () => {
                 </button>
               </div>
             ))}
-            <div
-              className="border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center h-32 hover:border-blue-500"
-              // onClick={() => fileInputRef.current?.click()}
-            >
+            <div className="aspect-square w-full h-full border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center hover:border-primary">
               <ImagePlus className="text-gray-400" />
             </div>
           </div>
         )}
       </div>
-
-      {selectedImages.length > 0 && (
-        <button
-          onClick={handleUpload}
-          className="mt-4 w-full bg-blue-500 text-white py-2 rounded-lg 
-          hover:bg-blue-600 transition-colors duration-300 flex items-center justify-center"
-        >
-          <ImagePlus className="mr-2" size={20} />
-          Upload {selectedImages.length} Image
-          {selectedImages.length > 1 ? "s" : ""}
-        </button>
-      )}
     </div>
   );
 };

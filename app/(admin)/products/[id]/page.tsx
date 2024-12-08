@@ -27,12 +27,12 @@ export default function Page() {
         <TabsContent value="variant" className="space-y-4">
           {product?.variants.map((variant) => (
             <ProductVariantForm
-              variant={{ ...variant, product_id }}
+              product_id={product_id}
+              variant={{ ...variant }}
               key={variant.variant_id}
             />
           ))}
           {isShowForm && <ProductVariantForm />}
-
           <Button onClick={() => setIsShowForm(!isShowForm)}>
             {!isShowForm ? "Add Variant" : "Close"}
           </Button>

@@ -13,45 +13,46 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import {
-  CreateProductSchema,
+  CreateProductDTO,
   productSchema,
 } from "@/features/products/dto/create-product.dto";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { X } from "lucide-react";
 import { useCreateProduct } from "@/features/products/services/use-create-product.service";
-import { AttributeForm } from "./_components/attribute-form";
-import { UploadImages } from "@/components/upload-images";
 import { useState } from "react";
 import CategorySelect from "@/components/category-select";
 import { useCreatePresign } from "@/features/files/services/use-create-presign.service";
-import { IFileRequest } from "@/features/files/dto/file-request";
 import { useUploadS3 } from "@/features/files/services/use-upload-s3.service";
-
-interface FileWithPreview extends File {
-  preview: string;
-}
+import VariantForm from "./_components/product-variant-form";
+import { IImageWithPreview } from "@/types/image-with-preview";
+import UploadImage from "@/components/upload-image";
+import { Textarea } from "@/components/ui/textarea";
 
 export default function ProductFormPage() {
   const mutation = useCreateProduct();
   const mutationPresign = useCreatePresign();
   const mutationS3 = useUploadS3();
-  const [files, setFiles] = useState<FileWithPreview[]>([]);
+  const [thumbnail, setThumbnail] = useState<IImageWithPreview>();
+  const [images, setImages] = useState<IImageWithPreview[]>([]);
 
-  const form = useForm<CreateProductSchema>({
+  const form = useForm<CreateProductDTO>({
     resolver: zodResolver(productSchema),
     defaultValues: {
       name: "",
       category_id: "1",
+      base_price: 0,
+      description: "",
       variants: [
         {
-          price: 0,
           sku: "",
-          quantity: 0,
+          additional_price: 0,
+          variant_name: "",
+          stock_quantity: 0,
           restock_level: 0,
+          image: undefined,
           attributes: [
             {
-              attribute: "size",
-              value: "L",
+              attribute_name: "size",
+              attribute_value: "",
             },
           ],
         },
@@ -59,51 +60,84 @@ export default function ProductFormPage() {
     },
   });
 
-  const variantField = useFieldArray({
+  const {
+    fields: variantsField,
+    append,
+    remove,
+  } = useFieldArray({
     control: form.control,
     name: "variants",
   });
 
   const addVariant = () => {
-    variantField.append({
+    append({
       sku: "",
-      price: 0,
-      quantity: 0,
+      additional_price: 0,
+      variant_name: "",
+      stock_quantity: 0,
       restock_level: 0,
+      image: {
+        name: "",
+        type: "",
+        size: 0,
+        collection_type: "",
+      },
       attributes: [
         {
-          attribute: "",
-          value: "",
+          attribute_name: "size",
+          attribute_value: "",
         },
       ],
     });
   };
 
-  function handleAddImages(files: FileWithPreview[]) {
-    setFiles((prevFiles) => [...files]);
-    // form.setValue("images", [...files.map((file) => file.name)]);
+  async function onImageChanged(value?: IImageWithPreview | null) {
+    if (value) {
+      setThumbnail(value);
+      form.setValue("thumbnail", {
+        name: value.file.name,
+        type: value.file.type,
+        size: value.file.size,
+        collection_type: "product",
+      });
+    }
   }
-  async function onSubmit(values: CreateProductSchema) {
-    let files_request: IFileRequest[] = [];
 
-    if (files.length) {
-      for (const file of files) {
-        const presignResponse = await mutationPresign.mutateAsync(file.name);
-        await mutationS3.mutateAsync({ file, presignUrl: presignResponse.url });
-        files_request.unshift({
-          file_name: presignResponse.file_name,
-          file_size: file.size,
-          file_type: file.type,
-          media_type: "product",
-          description: "",
-        });
-      }
+  async function onSubmit(values: CreateProductDTO) {
+    if (thumbnail) {
+      const presignResponse = await mutationPresign.mutateAsync(
+        thumbnail.file.name
+      );
+      await mutationS3.mutateAsync({
+        file: thumbnail.file,
+        presignUrl: presignResponse.url,
+      });
+
+      values.thumbnail!.name = presignResponse.file_name;
     }
 
-    await mutation.mutateAsync({
-      ...values,
-      images: files_request,
-    });
+    if (values.variants?.length) {
+      await Promise.all(
+        values.variants.map(async (variant, idx) => {
+          if (images[idx]) {
+            const presignResponse = await mutationPresign.mutateAsync(
+              images[idx].file.name
+            );
+
+            await mutationS3.mutateAsync({
+              file: images[idx].file,
+              presignUrl: presignResponse.url,
+            });
+
+            variant.image!.name = presignResponse.file_name;
+          }
+        })
+      );
+    }
+
+    console.log(values);
+
+    await mutation.mutateAsync(values);
   }
 
   return (
@@ -114,7 +148,7 @@ export default function ProductFormPage() {
             <CardHeader>
               <CardTitle>Product Details</CardTitle>
             </CardHeader>
-            <CardContent className="grid grid-cols-2 gap-x-8">
+            <CardContent className="grid grid-cols-2 gap-x-8 gap-y-4">
               <FormField
                 control={form.control}
                 name="name"
@@ -146,6 +180,41 @@ export default function ProductFormPage() {
                   </FormItem>
                 )}
               />
+              <FormField
+                control={form.control}
+                name={"base_price"}
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Base Price</FormLabel>
+                    <FormControl>
+                      <Input
+                        {...field}
+                        type="number"
+                        className="h-9"
+                        onChange={(e) => field.onChange(Number(e.target.value))}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem className="col-span-2">
+                    <FormLabel>Desscription</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        placeholder="Product a description"
+                        {...field}
+                        className="h-9"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             </CardContent>
           </Card>
           <Card>
@@ -153,104 +222,18 @@ export default function ProductFormPage() {
               <CardTitle>Product Images</CardTitle>
             </CardHeader>
             <CardContent>
-              <UploadImages values={files} onSetValues={setFiles} />
+              <UploadImage onStateChange={onImageChanged} />
             </CardContent>
           </Card>
-          {variantField.fields.map((field, index) => (
-            <Card key={field.id}>
-              <CardHeader>
-                <CardTitle className="flex justify-between">
-                  <span>Variants</span>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => variantField.remove(index)}
-                  >
-                    <X />
-                  </Button>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                <FormField
-                  control={form.control}
-                  name={`variants.${index}.sku`}
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>SKU</FormLabel>
-                      <FormControl>
-                        <Input {...field} className="h-9" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name={`variants.${index}.price`}
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Price</FormLabel>
-                      <FormControl>
-                        <Input
-                          {...field}
-                          type="number"
-                          className="h-9"
-                          onChange={(e) =>
-                            field.onChange(Number(e.target.value))
-                          }
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name={`variants.${index}.quantity`}
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Quantity</FormLabel>
-                      <FormControl>
-                        <Input
-                          {...field}
-                          type="number"
-                          className="h-9"
-                          onChange={(e) =>
-                            field.onChange(Number(e.target.value))
-                          }
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name={`variants.${index}.restock_level`}
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Restock Level</FormLabel>
-                      <FormControl>
-                        <Input
-                          {...field}
-                          type="number"
-                          className="h-9"
-                          onChange={(e) =>
-                            field.onChange(Number(e.target.value))
-                          }
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <AttributeForm
-                  control={form.control}
-                  index={index}
-                  key={index}
-                />
-              </CardContent>
-            </Card>
+          {variantsField.map((field, index) => (
+            <VariantForm
+              key={field.id}
+              form={form}
+              field={field}
+              index={index}
+              remove={remove}
+              setImages={setImages}
+            />
           ))}
           <div className="flex justify-between">
             <Button onClick={addVariant}>Add Variant</Button>

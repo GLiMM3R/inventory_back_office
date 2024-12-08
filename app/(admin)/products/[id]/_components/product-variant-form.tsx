@@ -3,53 +3,53 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Save, X } from "lucide-react";
+import { Save } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import { AttributeForm } from "./attribute-form";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { getChangedValues } from "@/lib/get-change-values";
-import { IVariant } from "@/features/variants/model/variant.interface";
 import { variantSchema } from "@/features/variants/dto/create-variant.dto";
-import { UpdateVariantSchema } from "@/features/variants/dto/update-variant.dto";
-import { useUpdateVaraint } from "@/features/variants/services/use-update-product.service";
-import { IFileWithPreview } from "@/types/file-with-preview.type";
+import { useUpdateVaraint } from "@/features/variants/services/use-update-variant.service";
 import UploadImage from "@/components/upload-image";
-import { IFileRequest } from "@/features/files/dto/file-request";
 import { useCreatePresign } from "@/features/files/services/use-create-presign.service";
 import { useUploadS3 } from "@/features/files/services/use-upload-s3.service";
+import { Switch } from "@/components/ui/switch";
+import AttributeStatusSelect from "@/components/attribute-status-select";
+import { IImageWithPreview } from "@/types/image-with-preview";
+import { IProductVariant } from "@/features/variants/model/product-variant.interface";
+import { UpdateVariantDTO } from "@/features/variants/dto/update-variant.dto";
+import { IMedia } from "@/features/files/model/media.interface";
 
 type Props = {
-  variant?: IVariant;
+  product_id?: string;
+  variant?: IProductVariant;
 };
 
 export default function ProductVariantForm({ variant }: Props) {
-  const [file, setFile] = useState<IFileWithPreview | null>(null);
+  const [image, setImage] = useState<IImageWithPreview | null>(null);
   const mutation = useUpdateVaraint();
   const mutationPresign = useCreatePresign();
   const mutationS3 = useUploadS3();
 
-  const form = useForm<UpdateVariantSchema>({
+  const form = useForm<UpdateVariantDTO>({
     resolver: zodResolver(variantSchema),
-    defaultValues: variant ?? {
-      sku: "",
-      price: 0,
-      quantity: 0,
-      restock_level: 0,
-      is_active: true,
-      status: "inactive",
-      attributes: [
-        {
-          attribute: "",
-          value: "",
-        },
-      ],
+    defaultValues: {
+      sku: variant?.variant_id ?? "",
+      variant_name: variant?.variant_name ?? "",
+      additional_price: variant?.additional_price ?? 0,
+      stock_quantity: variant?.stock_quantity ?? 0,
+      restock_level: variant?.restock_level ?? 0,
+      is_active: variant?.is_active ?? true,
+      status: variant?.status ?? "in_stock",
+      attributes: variant?.attributes,
     },
   });
 
@@ -58,47 +58,72 @@ export default function ProductVariantForm({ variant }: Props) {
     form.reset(variant);
   }, [variant]);
 
-  // useEffect(() => {
-  //   if (variant && variant?.image) {
-  //     setFile({
-  //       id: variant?.image.media_id,
-  //       name: variant?.image.file_name,
-  //       preview: variant?.image.file_url,
-  //       size: variant?.image.file_size,
-  //       type: variant?.image.file_type,
-  //     } as IFileWithPreview);
-  //   }
-  // }, [variant?.image]);
+  const onImageChanged = (value: IImageWithPreview | null) => {
+    if (value) {
+      setImage(value);
+      form.setValue("image", {
+        name: value.file.name,
+        type: value.file.type,
+        size: value.file.size,
+        collection_type: "product",
+      });
+    }
+  };
 
-  async function onSubmit(values: UpdateVariantSchema) {
-    console.log(file?.size);
-    return;
-
-    if (variant) {
-      let image_request: IFileRequest | undefined;
-
-      if (file) {
-        const presignResponse = await mutationPresign.mutateAsync(file.name);
-        await mutationS3.mutateAsync({ file, presignUrl: presignResponse.url });
-        image_request = {
-          file_name: presignResponse.file_name,
-          file_size: file.size,
-          file_type: file.type,
-          media_type: "product",
-          description: "",
-        };
+  const fetcImage = async (image: IMedia) => {
+    try {
+      const res = await fetch(image.url);
+      if (!res.ok) {
+        throw new Error("Failed to fetch image");
       }
 
-      const changed = getChangedValues(variant, values);
-
-      mutation.mutate({
-        product_id: variant.product_id,
-        variant_id: variant.variant_id,
-        data: { ...changed, image: image_request },
-      });
-    } else {
-      console.log(values);
+      const blob = await res.blob();
+      const file = new File([blob], image.name, { type: blob.type });
+      setImage(() => ({
+        id: image.id,
+        file,
+        preview: URL.createObjectURL(blob),
+      }));
+    } catch (error) {
+      console.error("Error fetching the image:", error);
     }
+  };
+
+  useEffect(() => {
+    if (variant?.image) {
+      fetcImage(variant.image);
+    }
+  }, [variant?.image]);
+
+  async function onSubmit(values: UpdateVariantDTO) {
+    // if (variant) {
+    //   if (
+    //     selectedImage &&
+    //     selectedImage.file.name !== variant.image.file_name
+    //   ) {
+    //     const presignResponse = await mutationPresign.mutateAsync(
+    //       selectedImage.file.name
+    //     );
+    //     await mutationS3.mutateAsync({
+    //       file: selectedImage.file,
+    //       presignUrl: presignResponse.url,
+    //     });
+    //     form.setValue("image", {
+    //       file_name: presignResponse.file_name,
+    //       file_size: selectedImage.file.size,
+    //       file_type: selectedImage.file.type,
+    //       media_type: "product",
+    //       description: "",
+    //     });
+    //   }
+    //   const changed = getChangedValues(variant, values);
+    //   mutation.mutate({
+    //     variant_id: variant.variant_id,
+    //     data: { ...changed },
+    //   });
+    // } else {
+    //   console.log(values);
+    // }
   }
 
   return (
@@ -112,7 +137,7 @@ export default function ProductVariantForm({ variant }: Props) {
           </CardHeader>
           <CardContent className="grid grid-cols-2 gap-x-4 gap-y-4">
             <div className="col-span-2 size-52">
-              <UploadImage value={file} onSetValue={setFile} />
+              <UploadImage value={image} onStateChange={onImageChanged} />
             </div>
             <FormField
               control={form.control}
@@ -129,7 +154,20 @@ export default function ProductVariantForm({ variant }: Props) {
             />
             <FormField
               control={form.control}
-              name={"price"}
+              name={"variant_name"}
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Variant Name</FormLabel>
+                  <FormControl>
+                    <Input {...field} className="h-9" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name={"additional_price"}
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Price</FormLabel>
@@ -147,10 +185,10 @@ export default function ProductVariantForm({ variant }: Props) {
             />
             <FormField
               control={form.control}
-              name={"quantity"}
+              name={"stock_quantity"}
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Quantity</FormLabel>
+                  <FormLabel>Stock Quantity</FormLabel>
                   <FormControl>
                     <Input
                       {...field}
@@ -178,6 +216,39 @@ export default function ProductVariantForm({ variant }: Props) {
                     />
                   </FormControl>
                   <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="status"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Category</FormLabel>
+                  <AttributeStatusSelect
+                    onChange={field.onChange}
+                    value={field.value?.toString()}
+                  />
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name={"is_active"}
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                  <div className="space-y-0.5">
+                    <FormLabel className="text-base">
+                      {field.value ? "Active" : "Inactive"}
+                    </FormLabel>
+                  </div>
+                  <FormControl>
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  </FormControl>
                 </FormItem>
               )}
             />

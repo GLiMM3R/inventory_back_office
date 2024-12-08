@@ -1,3 +1,3 @@
-import { CreateProductSchema } from "./create-product.dto";
+import { CreateProductDTO } from "./create-product.dto";
 
-export type UpdateProductSchema = Partial<CreateProductSchema>;
+export type UpdateProductDTO = Partial<CreateProductDTO>;

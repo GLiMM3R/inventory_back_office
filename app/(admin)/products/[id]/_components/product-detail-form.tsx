@@ -1,4 +1,5 @@
 import CategorySelect from "@/components/category-select";
+import MultiImageUpload from "@/components/multiple-images-upload";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -11,24 +12,22 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { UploadImages } from "@/components/upload-images";
+import UploadImage from "@/components/upload-image";
 import { IFileRequest } from "@/features/files/dto/file-request";
+import { IMedia } from "@/features/files/model/media.interface";
 import { useCreatePresign } from "@/features/files/services/use-create-presign.service";
 import { useUploadS3 } from "@/features/files/services/use-upload-s3.service";
 import { productSchema } from "@/features/products/dto/create-product.dto";
-import { UpdateProductSchema } from "@/features/products/dto/update-product.dto";
+import { UpdateProductDTO } from "@/features/products/dto/update-product.dto";
 import { IProduct } from "@/features/products/model/product.interface";
 import { useUpdateProduct } from "@/features/products/services/use-update-product.service";
 import { getChangedValues } from "@/lib/get-change-values";
+import { IFileWithPreview } from "@/types/file-with-preview.type";
+import { IImageWithPreview } from "@/types/image-with-preview";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Save } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
-
-interface FileWithPreview extends File {
-  preview: string;
-  id?: string;
-}
 
 type Props = {
   product?: IProduct;
@@ -38,31 +37,52 @@ export default function ProductDetailForm({ product }: Props) {
   const mutation = useUpdateProduct();
   const mutationPresign = useCreatePresign();
   const mutationS3 = useUploadS3();
-  const [files, setFiles] = useState<FileWithPreview[]>([]);
+  const [thumbnail, setThumbnail] = useState<IImageWithPreview>();
+
+  const fetcImage = async (image: IMedia) => {
+    try {
+      const res = await fetch(image.url);
+      if (!res.ok) {
+        throw new Error("Failed to fetch image");
+      }
+
+      const blob = await res.blob();
+      const file = new File([blob], image.name, { type: blob.type });
+      setThumbnail(() => ({
+        id: image.id,
+        file,
+        preview: URL.createObjectURL(blob),
+      }));
+    } catch (error) {
+      console.error("Error fetching the image:", error);
+    }
+  };
 
   useEffect(() => {
-    if (product && product?.images?.length) {
-      setFiles(
-        product.images.map((image) => {
-          return {
-            id: image.media_id,
-            name: image.file_name,
-            preview: image.file_url,
-            size: image.file_size,
-            type: image.file_type,
-          } as FileWithPreview;
-        })
-      );
+    if (product?.thumbnail) {
+      fetcImage(product.thumbnail);
     }
   }, [product]);
 
-  const form = useForm<UpdateProductSchema>({
+  async function onImageChanged(value?: IImageWithPreview | null) {
+    if (value) {
+      setThumbnail(value);
+      form.setValue("thumbnail", {
+        name: value.file.name,
+        type: value.file.type,
+        size: value.file.size,
+        collection_type: "product",
+      });
+    }
+  }
+
+  const form = useForm<UpdateProductDTO>({
     resolver: zodResolver(productSchema),
     defaultValues: product ?? {
       name: "",
       category_id: "",
+      base_price: 0,
       description: "",
-      variants: [],
     },
   });
 
@@ -70,41 +90,49 @@ export default function ProductDetailForm({ product }: Props) {
     form.reset(product);
   }, [product]);
 
-  async function onSubmit(values: UpdateProductSchema) {
-    let files_request: IFileRequest[] = [];
-
-    if (files.length) {
-      for (const file of files) {
-        if (!file.id) {
-          // const presignResponse = await mutationPresign.mutateAsync(file.name);
-          // await mutationS3.mutateAsync({
-          //   file,
-          //   presignUrl: presignResponse.url,
-          // });
-          files_request.unshift({
-            file_name: file.name,
-            file_size: file.size,
-            file_type: file.type,
-            media_type: "product",
-            description: "",
-          });
-        }
-      }
-    }
-
-    console.log(files_request);
-
-    return;
-    if (product?.product_id) {
-      mutation.mutate({
-        id: product?.product_id,
-        product: {
-          category_id: values?.category_id,
-          description: values.description,
-          name: values.name,
-        },
-      });
-    }
+  async function onSubmit(values: UpdateProductDTO) {
+    // let files_request: IFileRequest[] = [];
+    // if (images.length) {
+    //   const uploadPromises = images.map(async (image) => {
+    //     const existingImage = product?.images?.find(
+    //       (img) => img.media_id === image.id
+    //     );
+    //     if (
+    //       image &&
+    //       (!existingImage || image.file.name !== existingImage.file_name)
+    //     ) {
+    //       const presignResponse = await mutationPresign.mutateAsync(
+    //         image.file.name
+    //       );
+    //       await mutationS3.mutateAsync({
+    //         file: image.file,
+    //         presignUrl: presignResponse.url,
+    //       });
+    //       return {
+    //         file_name: presignResponse.file_name,
+    //         file_size: image.file.size,
+    //         file_type: image.file.type,
+    //         media_type: "product",
+    //         description: "",
+    //       };
+    //     }
+    //     return null;
+    //   });
+    //   const uploadResults = await Promise.all(uploadPromises);
+    //   files_request = uploadResults.filter(
+    //     (result): result is IFileRequest => result !== null
+    //   );
+    // }
+    // if (product?.product_id) {
+    //   const changed = getChangedValues(product, values);
+    //   mutation.mutate({
+    //     id: product?.product_id,
+    //     product: {
+    //       ...changed,
+    //       images: files_request,
+    //     },
+    //   });
+    // }
   }
 
   return (
@@ -182,7 +210,9 @@ export default function ProductDetailForm({ product }: Props) {
               <CardTitle>Images</CardTitle>
             </CardHeader>
             <CardContent>
-              <UploadImages values={files} onSetValues={setFiles} />
+              <div className="size-60">
+                <UploadImage value={thumbnail} onStateChange={onImageChanged} />
+              </div>
             </CardContent>
           </Card>
         </form>

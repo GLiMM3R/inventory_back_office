@@ -29,7 +29,6 @@ export default function Products() {
   const [currentPage, setCurrentPage] = useState(1);
   const [limitPage, setLimitPage] = useState(10);
   const { data, refetch, isLoading } = useGetProducts({
-    name: "",
     page: currentPage,
     limit: limitPage,
   });
@@ -82,7 +81,7 @@ export default function Products() {
                     }
                   >
                     <TableCell>{product.name}</TableCell>
-                    <TableCell>{product.category}</TableCell>
+                    <TableCell>{product.category_name}</TableCell>
                     <TableCell>
                       {new Date(product.created_at * 1000).toLocaleString(
                         "en-GB"

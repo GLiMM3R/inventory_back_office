@@ -1,6 +1,3 @@
-import { IFileRequest } from "@/features/files/dto/file-request";
-import { CreateVariantSchema } from "./create-variant.dto";
+import { CreateVariantDTO } from "./create-variant.dto";
 
-export type UpdateVariantSchema = Partial<CreateVariantSchema> & {
-  image?: IFileRequest;
-};
+export type UpdateVariantDTO = Partial<CreateVariantDTO>;

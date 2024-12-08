@@ -43,8 +43,8 @@ export function UploadImages({ values, onSetValues }: UploadImageProps) {
         <Image
           src={file.preview}
           className="block object-contain w-auto h-full"
-          width={50}
-          height={50}
+          width={200}
+          height={200}
           alt=""
           onLoad={() => {
             URL.revokeObjectURL(file.preview);

@@ -13,7 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { CreateProductSchema } from "@/features/products/dto/create-product.dto";
+import { CreateProductDTO } from "@/features/products/dto/create-product.dto";
 import { Select } from "@radix-ui/react-select";
 import { X } from "lucide-react";
 import { Control, useFieldArray } from "react-hook-form";
@@ -22,7 +22,7 @@ export const AttributeForm = ({
   control,
   index,
 }: {
-  control: Control<CreateProductSchema>;
+  control: Control<CreateProductDTO>;
   index: number;
 }) => {
   const attributes = ["size", "color"];
@@ -32,7 +32,7 @@ export const AttributeForm = ({
   });
 
   const addAttribute = () => {
-    append({ attribute: "", value: "" });
+    append({ attribute_name: "", attribute_value: "" });
   };
 
   return (
@@ -45,7 +45,7 @@ export const AttributeForm = ({
           >
             <FormField
               control={control}
-              name={`variants.${index}.attributes.${attrIndex}.attribute`}
+              name={`variants.${index}.attributes.${attrIndex}.attribute_name`}
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Attribute</FormLabel>
@@ -72,7 +72,7 @@ export const AttributeForm = ({
             />
             <FormField
               control={control}
-              name={`variants.${index}.attributes.${attrIndex}.value`}
+              name={`variants.${index}.attributes.${attrIndex}.attribute_value`}
               render={({ field }) => (
                 <FormItem className="w-full">
                   <FormLabel className="flex">Value</FormLabel>

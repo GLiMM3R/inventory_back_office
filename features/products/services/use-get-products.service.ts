@@ -5,7 +5,6 @@ import { Response } from "@/types/reponse";
 import { useQuery } from "@tanstack/react-query";
 
 type Filters = {
-  name: string;
   page: number;
   limit: number;
 };

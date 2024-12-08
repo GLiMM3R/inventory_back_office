@@ -2,20 +2,16 @@ import http from "@/lib/request";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "@/hooks/use-toast";
 import { base_url } from "@/constants/base_url";
-import { UpdateProductSchema } from "../dto/update-product.dto";
+import { UpdateProductDTO } from "../dto/update-product.dto";
 
 type Props = {
   id: string;
-  product: UpdateProductSchema;
+  product: UpdateProductDTO;
 };
 
 const updateProduct = async ({ id, product }: Props) => {
   try {
-    const res = await http.patch(`${base_url}/products/${id}`, product);
-
-    if (res.status !== 201) {
-      throw new Error("Failed to update product");
-    }
+    await http.patch(`${base_url}/products/${id}`, product);
   } catch (error) {
     throw new Error("Failed to update product");
   }

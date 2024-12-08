@@ -1,8 +1,8 @@
 import { base_url } from "@/constants/base_url";
 import http from "@/lib/request";
-import { IProducts } from "../model/products.interface";
 import { Response } from "@/types/reponse";
 import { useQuery } from "@tanstack/react-query";
+import { IProductVariant } from "../model/product-variant.interface";
 
 type Filters = {
   product_id: string;
@@ -13,8 +13,8 @@ type Filters = {
 
 export const fetchVariants = async (filters?: Filters) => {
   try {
-    const res = await http.get<Response<IProducts[]>>(
-      `${base_url}/products/${filters?.product_id}`,
+    const res = await http.get<Response<IProductVariant[]>>(
+      `${base_url}/variants/${filters?.product_id}`,
       {
         params: filters,
       }
